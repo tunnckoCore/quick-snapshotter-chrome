@@ -8,6 +8,16 @@
 
   const highlight = document.createElement('div');
   highlight.id = 'screenshot-extension-highlight';
+  highlight.innerHTML = `
+    <div class="screenshot-handle n" data-handle="n"></div>
+    <div class="screenshot-handle s" data-handle="s"></div>
+    <div class="screenshot-handle e" data-handle="e"></div>
+    <div class="screenshot-handle w" data-handle="w"></div>
+    <div class="screenshot-handle nw" data-handle="nw"></div>
+    <div class="screenshot-handle ne" data-handle="ne"></div>
+    <div class="screenshot-handle sw" data-handle="sw"></div>
+    <div class="screenshot-handle se" data-handle="se"></div>
+  `;
   document.body.appendChild(highlight);
   
   const actionUi = document.createElement('div');
@@ -24,16 +34,74 @@
   
   let isMouseDown = false;
   let isDragging = false;
+  let isResizing = false;
+  let resizeHandle = null;
+  let originalRect = null;
+  
   let startX = 0;
   let startY = 0;
   let selectedRect = null;
+
+  function clamp(val, min, max) {
+    return Math.min(Math.max(val, min), max);
+  }
+
+  function updateHighlightDOM() {
+    if (!selectedRect) return;
+    highlight.style.left = `${selectedRect.x}px`;
+    highlight.style.top = `${selectedRect.y}px`;
+    highlight.style.width = `${selectedRect.width}px`;
+    highlight.style.height = `${selectedRect.height}px`;
+    highlight.style.display = 'block';
+    highlight.style.border = '2px dashed #ffffff';
+    highlight.style.background = 'transparent';
+  }
+
+  function positionActionUi() {
+    actionUi.style.display = 'flex';
+    
+    const uiWidth = actionUi.offsetWidth || 200;
+    const uiHeight = actionUi.offsetHeight || 40;
+    
+    let topPos = selectedRect.bottom + 10;
+    if (topPos + uiHeight > window.innerHeight) {
+      topPos = selectedRect.top - uiHeight - 10;
+    }
+    // if still out of bounds (element bigger than viewport)
+    if (topPos < 0) topPos = 10;
+    
+    let leftPos = selectedRect.right - uiWidth;
+    if (leftPos < 0) {
+      leftPos = selectedRect.left;
+      if (leftPos < 0) leftPos = 10;
+    }
+    
+    actionUi.style.top = `${topPos}px`;
+    actionUi.style.left = `${leftPos}px`;
+    actionUi.style.opacity = '1';
+    actionUi.style.pointerEvents = 'auto';
+  }
 
   function onMouseDown(e) {
     if (e.target.closest('#screenshot-extension-actions')) return;
     
     if (locked) {
+      if (e.target.classList.contains('screenshot-handle')) {
+        isResizing = true;
+        resizeHandle = e.target.dataset.handle;
+        originalRect = { ...selectedRect };
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        // Hide actions while resizing
+        actionUi.style.opacity = '0';
+        actionUi.style.pointerEvents = 'none';
+        return;
+      }
+      
       // Click outside to unlock
       locked = false;
+      highlight.classList.remove('locked');
       actionUi.style.display = 'none';
       
       // Update hover highlight immediately based on mouse position
@@ -53,17 +121,56 @@
   }
 
   function onMouseMove(e) {
+    if (isResizing) {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      
+      let { x, y, width, height } = originalRect;
+      
+      if (resizeHandle.includes('n')) {
+        y += dy;
+        height -= dy;
+      }
+      if (resizeHandle.includes('s')) {
+        height += dy;
+      }
+      if (resizeHandle.includes('w')) {
+        x += dx;
+        width -= dx;
+      }
+      if (resizeHandle.includes('e')) {
+        width += dx;
+      }
+      
+      // Prevent negative size
+      if (width < 10) { width = 10; if (resizeHandle.includes('w')) x = originalRect.x + originalRect.width - 10; }
+      if (height < 10) { height = 10; if (resizeHandle.includes('n')) y = originalRect.y + originalRect.height - 10; }
+      
+      // Constrain to viewport
+      if (x < 0) { width += x; x = 0; }
+      if (y < 0) { height += y; y = 0; }
+      if (x + width > window.innerWidth) width = window.innerWidth - x;
+      if (y + height > window.innerHeight) height = window.innerHeight - y;
+      
+      selectedRect = { x, y, width, height, bottom: y + height, right: x + width, top: y, left: x };
+      updateHighlightDOM();
+      return;
+    }
+
     if (locked) return;
     
     if (isMouseDown) {
       isDragging = true;
-      const currentX = e.clientX;
-      const currentY = e.clientY;
+      const currentX = clamp(e.clientX, 0, window.innerWidth);
+      const currentY = clamp(e.clientY, 0, window.innerHeight);
       
-      const x = Math.min(startX, currentX);
-      const y = Math.min(startY, currentY);
-      const width = Math.abs(startX - currentX);
-      const height = Math.abs(startY - currentY);
+      const cx = clamp(startX, 0, window.innerWidth);
+      const cy = clamp(startY, 0, window.innerHeight);
+
+      const x = Math.min(cx, currentX);
+      const y = Math.min(cy, currentY);
+      const width = Math.abs(cx - currentX);
+      const height = Math.abs(cy - currentY);
       
       selectedRect = { 
         x, y, width, height,
@@ -73,13 +180,7 @@
         left: x
       };
       
-      highlight.style.left = `${x}px`;
-      highlight.style.top = `${y}px`;
-      highlight.style.width = `${width}px`;
-      highlight.style.height = `${height}px`;
-      highlight.style.display = 'block';
-      highlight.style.border = '2px dashed #ffffff';
-      highlight.style.background = 'transparent';
+      updateHighlightDOM();
       
     } else {
       // Element hover mode
@@ -90,30 +191,31 @@
       const target = document.elementFromPoint(e.clientX, e.clientY);
       
       overlay.style.pointerEvents = 'auto';
-      actionUi.style.pointerEvents = 'auto';
       
       if (target && target !== currentTarget && target !== document.body && target !== document.documentElement) {
         currentTarget = target;
         const rect = target.getBoundingClientRect();
         
+        // Constrain bounding client rect to viewport
+        const top = Math.max(0, rect.top);
+        const left = Math.max(0, rect.left);
+        const bottom = Math.min(window.innerHeight, rect.bottom);
+        const right = Math.min(window.innerWidth, rect.right);
+        const width = Math.max(0, right - left);
+        const height = Math.max(0, bottom - top);
+
         selectedRect = {
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          height: rect.height,
-          bottom: rect.bottom,
-          right: rect.right,
-          top: rect.top,
-          left: rect.left
+          x: left,
+          y: top,
+          width: width,
+          height: height,
+          bottom: bottom,
+          right: right,
+          top: top,
+          left: left
         };
         
-        highlight.style.left = `${rect.left}px`;
-        highlight.style.top = `${rect.top}px`;
-        highlight.style.width = `${rect.width}px`;
-        highlight.style.height = `${rect.height}px`;
-        highlight.style.display = 'block';
-        highlight.style.border = '2px dashed #ffffff';
-        highlight.style.background = 'transparent';
+        updateHighlightDOM();
       } else if (!target || target === document.body || target === document.documentElement) {
         currentTarget = null;
         selectedRect = null;
@@ -124,6 +226,12 @@
 
   function onMouseUp(e) {
     if (e.target.closest('#screenshot-extension-actions')) return;
+    
+    if (isResizing) {
+      isResizing = false;
+      positionActionUi();
+      return;
+    }
     
     if (!isMouseDown) return;
     isMouseDown = false;
@@ -146,30 +254,14 @@
 
   function lockSelection() {
     locked = true;
+    highlight.classList.add('locked');
+    updateHighlightDOM(); // Ensure borders are drawn correctly
     
     actionUi.style.opacity = '0';
     actionUi.style.display = 'flex';
     
-    const uiWidth = actionUi.offsetWidth || 200;
-    const uiHeight = actionUi.offsetHeight || 40;
-    
-    let topPos = selectedRect.bottom + 10;
-    if (topPos + uiHeight > window.innerHeight) {
-      topPos = selectedRect.top - uiHeight - 10;
-    }
-    
-    let leftPos = selectedRect.right - uiWidth;
-    if (leftPos < 0) {
-      leftPos = selectedRect.left;
-      if (leftPos < 0) leftPos = 10;
-    }
-    
-    actionUi.style.top = `${topPos}px`;
-    actionUi.style.left = `${leftPos}px`;
-    actionUi.style.opacity = '1';
-    
-    highlight.style.border = '2px dashed #ffffff';
-    highlight.style.background = 'transparent';
+    // Slight delay to allow CSS calculation for offsetWidth/Height
+    setTimeout(positionActionUi, 0);
   }
 
   function onClick(e) {
