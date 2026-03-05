@@ -78,8 +78,8 @@
       highlight.style.width = `${width}px`;
       highlight.style.height = `${height}px`;
       highlight.style.display = 'block';
-      highlight.style.border = '2px dashed #007bff';
-      highlight.style.background = 'rgba(0, 123, 255, 0.1)';
+      highlight.style.border = '2px dashed #ffffff';
+      highlight.style.background = 'transparent';
       
     } else {
       // Element hover mode
@@ -112,8 +112,8 @@
         highlight.style.width = `${rect.width}px`;
         highlight.style.height = `${rect.height}px`;
         highlight.style.display = 'block';
-        highlight.style.border = '2px solid #007bff';
-        highlight.style.background = 'rgba(0, 123, 255, 0.2)';
+        highlight.style.border = '2px dashed #ffffff';
+        highlight.style.background = 'transparent';
       } else if (!target || target === document.body || target === document.documentElement) {
         currentTarget = null;
         selectedRect = null;
@@ -168,8 +168,8 @@
     actionUi.style.left = `${leftPos}px`;
     actionUi.style.opacity = '1';
     
-    highlight.style.border = isDragging ? '2px dashed #ff3366' : '2px solid #ff3366';
-    highlight.style.background = 'rgba(255, 51, 102, 0.1)';
+    highlight.style.border = isDragging ? '2px solid #ffffff' : '2px solid #ffffff';
+    highlight.style.background = 'rgba(255, 255, 255, 0.1)';
   }
 
   function onClick(e) {

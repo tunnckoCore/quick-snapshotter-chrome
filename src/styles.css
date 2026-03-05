@@ -12,12 +12,13 @@
 #screenshot-extension-highlight {
   position: fixed;
   z-index: 2147483646;
-  border: 2px solid #007bff;
-  background: rgba(0, 123, 255, 0.2);
+  border: 2px dashed #ffffff;
+  background: transparent;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   box-sizing: border-box;
   display: none;
-  transition: border 0.1s, background 0.1s;
+  transition: border 0.1s, background 0.1s, box-shadow 0.1s;
 }
 
 #screenshot-extension-actions {
