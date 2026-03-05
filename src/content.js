@@ -169,7 +169,7 @@
     actionUi.style.opacity = '1';
     
     highlight.style.border = '2px dashed #ffffff';
-    highlight.style.background = 'rgba(255, 255, 255, 0.1)';
+    highlight.style.background = 'transparent';
   }
 
   function onClick(e) {
