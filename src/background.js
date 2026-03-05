@@ -34,43 +34,46 @@ function startSelection(tabId) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "ELEMENT_SELECTED") {
-    const { rect, dpr, action } = message;
-    
-    // Slight delay to allow the highlight overlay to disappear before capturing
-    setTimeout(() => {
-      chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" }, (dataUrl) => {
-        if (chrome.runtime.lastError) {
-          console.error(chrome.runtime.lastError);
-          sendResponse({ success: false, error: chrome.runtime.lastError.message });
-          return;
-        }
-        
-        cropImage(dataUrl, rect, dpr).then((croppedDataUrl) => {
-          if (action === 'download') {
-            chrome.storage.sync.get({ subfolder: '', saveAs: false }, (items) => {
-              let filename = `screenshot-${Date.now()}.png`;
-              if (items.subfolder) {
-                // Ensure no leading/trailing slashes, though popup already cleans it
-                let folder = items.subfolder.replace(/^[\/\\]+|[\/\\]+$/g, '');
-                filename = `${folder}/${filename}`;
-              }
-              chrome.downloads.download({
-                url: croppedDataUrl,
-                filename: filename,
-                saveAs: items.saveAs
-              });
-              sendResponse({ success: true });
+  if (message.type !== "ELEMENT_SELECTED") return;
+
+  const { rect, dpr, action } = message;
+  
+  // Slight delay to allow the highlight overlay to disappear before capturing
+  setTimeout(() => {
+    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        console.error(chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        return;
+      }
+      
+      cropImage(dataUrl, rect, dpr).then((croppedDataUrl) => {
+        if (action === 'download') {
+          chrome.storage.sync.get({ subfolder: '', saveAs: false }, (items) => {
+            let filename = `screenshot-${Date.now()}.png`;
+            if (items.subfolder) {
+              // Ensure no leading/trailing slashes, though popup already cleans it
+              let folder = items.subfolder.replace(/^[\/\\]+|[\/\\]+$/g, '');
+              filename = `${folder}/${filename}`;
+            }
+            chrome.downloads.download({
+              url: croppedDataUrl,
+              filename: filename,
+              saveAs: items.saveAs
             });
-          } else if (action === 'copy') {
-            sendResponse({ success: true, dataUrl: croppedDataUrl });
-          }
-        });
+            sendResponse({ success: true });
+          });
+          return;
+        } 
+        
+        if (action === 'copy') {
+          sendResponse({ success: true, dataUrl: croppedDataUrl });
+        }
       });
-    }, 150);
-    
-    return true; // Indicate async response
-  }
+    });
+  }, 150);
+  
+  return true; // Indicate async response
 });
 
 async function blobToBase64(blob) {

@@ -181,47 +181,50 @@
       };
       
       updateHighlightDOM();
-      
-    } else {
-      // Element hover mode
-      overlay.style.pointerEvents = 'none';
-      highlight.style.pointerEvents = 'none';
-      actionUi.style.pointerEvents = 'none';
-      
-      const target = document.elementFromPoint(e.clientX, e.clientY);
-      
-      overlay.style.pointerEvents = 'auto';
-      
-      if (target && target !== currentTarget && target !== document.body && target !== document.documentElement) {
-        currentTarget = target;
-        const rect = target.getBoundingClientRect();
-        
-        // Constrain bounding client rect to viewport
-        const top = Math.max(0, rect.top);
-        const left = Math.max(0, rect.left);
-        const bottom = Math.min(window.innerHeight, rect.bottom);
-        const right = Math.min(window.innerWidth, rect.right);
-        const width = Math.max(0, right - left);
-        const height = Math.max(0, bottom - top);
-
-        selectedRect = {
-          x: left,
-          y: top,
-          width: width,
-          height: height,
-          bottom: bottom,
-          right: right,
-          top: top,
-          left: left
-        };
-        
-        updateHighlightDOM();
-      } else if (!target || target === document.body || target === document.documentElement) {
-        currentTarget = null;
-        selectedRect = null;
-        highlight.style.display = 'none';
-      }
+      return;
     }
+
+    // Element hover mode
+    overlay.style.pointerEvents = 'none';
+    highlight.style.pointerEvents = 'none';
+    actionUi.style.pointerEvents = 'none';
+    
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    
+    overlay.style.pointerEvents = 'auto';
+    
+    if (!target || target === document.body || target === document.documentElement) {
+      currentTarget = null;
+      selectedRect = null;
+      highlight.style.display = 'none';
+      return;
+    }
+    
+    if (target === currentTarget) return;
+
+    currentTarget = target;
+    const rect = target.getBoundingClientRect();
+    
+    // Constrain bounding client rect to viewport
+    const top = Math.max(0, rect.top);
+    const left = Math.max(0, rect.left);
+    const bottom = Math.min(window.innerHeight, rect.bottom);
+    const right = Math.min(window.innerWidth, rect.right);
+    const width = Math.max(0, right - left);
+    const height = Math.max(0, bottom - top);
+
+    selectedRect = {
+      x: left,
+      y: top,
+      width: width,
+      height: height,
+      bottom: bottom,
+      right: right,
+      top: top,
+      left: left
+    };
+    
+    updateHighlightDOM();
   }
 
   function onMouseUp(e) {
@@ -244,11 +247,12 @@
         highlight.style.display = 'none';
         selectedRect = null;
       }
-    } else {
-      // Just a click, lock the currently hovered element
-      if (selectedRect) {
-        lockSelection();
-      }
+      return;
+    }
+    
+    // Just a click, lock the currently hovered element
+    if (selectedRect) {
+      lockSelection();
     }
   }
 
@@ -265,50 +269,53 @@
   }
 
   function onClick(e) {
-    if (e.target.closest('#screenshot-extension-actions')) {
-      const id = e.target.id;
-      
-      if (id === 'screenshot-btn-download' || id === 'screenshot-btn-copy') {
-        const action = id === 'screenshot-btn-download' ? 'download' : 'copy';
-        const rectToCapture = selectedRect;
-        cleanup();
-        
-        if (rectToCapture) {
-          chrome.runtime.sendMessage({
-            type: "ELEMENT_SELECTED",
-            action: action,
-            rect: {
-              x: rectToCapture.x,
-              y: rectToCapture.y,
-              width: rectToCapture.width,
-              height: rectToCapture.height
-            },
-            dpr: window.devicePixelRatio
-          }, async (response) => {
-            if (response && response.success && action === 'copy') {
-              try {
-                const res = await fetch(response.dataUrl);
-                const blob = await res.blob();
-                await navigator.clipboard.write([
-                  new ClipboardItem({
-                    [blob.type]: blob
-                  })
-                ]);
-              } catch (err) {
-                console.error('Failed to copy image: ', err);
-                alert('Failed to copy to clipboard.');
-              }
-            }
-          });
-        }
-      } else if (id === 'screenshot-btn-cancel') {
-        cleanup();
-      }
+    if (!e.target.closest('#screenshot-extension-actions')) {
+      e.preventDefault();
+      e.stopPropagation();
       return;
     }
+
+    const id = e.target.id;
     
-    e.preventDefault();
-    e.stopPropagation();
+    if (id === 'screenshot-btn-cancel') {
+      cleanup();
+      return;
+    }
+
+    if (id === 'screenshot-btn-download' || id === 'screenshot-btn-copy') {
+      const action = id === 'screenshot-btn-download' ? 'download' : 'copy';
+      const rectToCapture = selectedRect;
+      cleanup();
+      
+      if (!rectToCapture) return;
+
+      chrome.runtime.sendMessage({
+        type: "ELEMENT_SELECTED",
+        action: action,
+        rect: {
+          x: rectToCapture.x,
+          y: rectToCapture.y,
+          width: rectToCapture.width,
+          height: rectToCapture.height
+        },
+        dpr: window.devicePixelRatio
+      }, async (response) => {
+        if (response && response.success && action === 'copy') {
+          try {
+            const res = await fetch(response.dataUrl);
+            const blob = await res.blob();
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                [blob.type]: blob
+              })
+            ]);
+          } catch (err) {
+            console.error('Failed to copy image: ', err);
+            alert('Failed to copy to clipboard.');
+          }
+        }
+      });
+    }
   }
   
   function onKeyDown(e) {
