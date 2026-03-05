@@ -168,7 +168,7 @@
     actionUi.style.left = `${leftPos}px`;
     actionUi.style.opacity = '1';
     
-    highlight.style.border = '2px solid #ffffff';
+    highlight.style.border = '2px dashed #ffffff';
     highlight.style.background = 'rgba(255, 255, 255, 0.1)';
   }
 
