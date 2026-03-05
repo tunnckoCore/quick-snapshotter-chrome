@@ -23,14 +23,34 @@ chrome.commands.onCommand.addListener((command) => {
 });
 
 function startSelection(tabId) {
-  chrome.scripting.insertCSS({
-    target: { tabId: tabId },
-    files: ["src/styles.css"],
-  });
-  chrome.scripting.executeScript({
-    target: { tabId: tabId },
-    files: ["src/content.js"],
-  });
+  chrome.scripting.executeScript(
+    {
+      target: { tabId: tabId },
+      func: () => {
+        const active = window.__wgwQuickSnapshotterExtensionActive;
+        const cssInjected = window.__wgwQuickSnapshotterCssInjected;
+        window.__wgwQuickSnapshotterCssInjected = true;
+        return { active, cssInjected };
+      },
+    },
+    (results) => {
+      if (chrome.runtime.lastError || !results || !results[0]) return;
+      const { active, cssInjected } = results[0].result || {};
+      
+      if (!active) {
+        if (!cssInjected) {
+          chrome.scripting.insertCSS({
+            target: { tabId: tabId },
+            files: ["src/styles.css"],
+          });
+        }
+        chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          files: ["src/content.js"],
+        });
+      }
+    }
+  );
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -92,14 +112,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 async function blobToBase64(blob) {
-  const arrayBuffer = await blob.arrayBuffer();
-  const bytes = new Uint8Array(arrayBuffer);
-  let binary = "";
-  // Avoid Maximum call stack size exceeded for very large images
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return "data:image/png;base64," + btoa(binary);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 async function cropImage(dataUrl, rect, dpr) {
