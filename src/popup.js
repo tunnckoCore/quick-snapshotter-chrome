@@ -1,13 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
   const subfolderInput = document.getElementById('subfolder');
+  const saveAsCheckbox = document.getElementById('save-as');
   const btnSave = document.getElementById('btn-save');
   const btnShortcuts = document.getElementById('btn-shortcuts');
   const saveStatus = document.getElementById('save-status');
   const currentShortcutEl = document.getElementById('current-shortcut');
 
   // Load existing settings
-  chrome.storage.sync.get({ subfolder: '' }, (items) => {
+  chrome.storage.sync.get({ subfolder: '', saveAs: false }, (items) => {
     subfolderInput.value = items.subfolder;
+    saveAsCheckbox.checked = items.saveAs;
   });
 
   // Load current shortcut
@@ -25,8 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let folder = subfolderInput.value.trim();
     // sanitize folder name slightly
     folder = folder.replace(/^[\/\\]+|[\/\\]+$/g, ''); 
+    const saveAs = saveAsCheckbox.checked;
 
-    chrome.storage.sync.set({ subfolder: folder }, () => {
+    chrome.storage.sync.set({ subfolder: folder, saveAs: saveAs }, () => {
       saveStatus.style.display = 'block';
       setTimeout(() => {
         saveStatus.style.display = 'none';

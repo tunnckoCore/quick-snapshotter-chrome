@@ -17,6 +17,19 @@ h2 {
   margin-bottom: 16px;
 }
 
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.checkbox-group input {
+  margin: 0;
+  cursor: pointer;
+}
+
 label {
   display: block;
   font-size: 13px;

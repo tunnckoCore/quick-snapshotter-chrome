@@ -48,7 +48,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         
         cropImage(dataUrl, rect, dpr).then((croppedDataUrl) => {
           if (action === 'download') {
-            chrome.storage.sync.get({ subfolder: '' }, (items) => {
+            chrome.storage.sync.get({ subfolder: '', saveAs: false }, (items) => {
               let filename = `screenshot-${Date.now()}.png`;
               if (items.subfolder) {
                 // Ensure no leading/trailing slashes, though popup already cleans it
@@ -57,7 +57,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               }
               chrome.downloads.download({
                 url: croppedDataUrl,
-                filename: filename
+                filename: filename,
+                saveAs: items.saveAs
               });
               sendResponse({ success: true });
             });

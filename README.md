@@ -1,12 +1,14 @@
 # Quick Snapshotter
 
-A Google Chrome extension that allows you to effortlessly select and capture screenshots of specific HTML elements on any webpage. 
+A Google Chrome extension that allows you to effortlessly select and capture screenshots of specific HTML elements or free-form regions on any webpage.
 
 ## Features
 - **Precise Element Selection**: Hover over elements to see exactly what will be captured.
-- **Action Menu**: Click to lock onto an element and reveal quick actions.
-- **Download**: Instantly download the cropped element screenshot.
-- **Copy to Clipboard**: Copy the element's image directly to your clipboard for easy pasting into documents or chat apps.
+- **Drag Selection**: Click and drag to capture a free-form region anywhere on the screen.
+- **Action Menu**: Click to lock onto an element or finish dragging to reveal quick actions.
+- **Download**: Instantly download the cropped screenshot.
+- **Copy to Clipboard**: Copy the image directly to your clipboard for easy pasting into documents or chat apps.
+- **Customizable**: Set global shortcuts and configure your default download behavior via the extension's popup menu.
 
 ## Installation
 Currently, the extension is installed via Developer Mode in Chrome.
@@ -17,13 +19,19 @@ Currently, the extension is installed via Developer Mode in Chrome.
 4. Click **Load unpacked** and select the folder containing this extension's code.
 
 ## Usage
-1. Right-click anywhere on a webpage and select **"Screenshot Element"** from the context menu, or click the extension's icon in your toolbar.
-2. Hover your mouse over the element you wish to capture.
-3. Click to lock the selection.
+1. Trigger the extension by using the global shortcut (`Ctrl+Shift+F` by default), clicking the toolbar icon, or using the right-click context menu.
+2. Hover over the element you wish to capture, or click and drag to draw a custom region.
+3. Lock the selection (by clicking the element or releasing the drag).
 4. Choose **Download** or **Copy to Clipboard** from the floating menu. (Press **Cancel** or hit the `Escape` key to abort).
+
+> **Note on Downloads:** For security reasons, Chrome Extensions can only silently download files into the default `Downloads` directory (or a subfolder of it). If you want to browse and choose a different folder for every screenshot, open the extension's popup menu and check "Always ask where to save (Browse...)".
 
 ## Project Structure
 - `manifest.json`: Configuration for Manifest V3.
 - `src/background.js`: Service worker handling capture, cropping, and clipboard/download orchestration.
 - `src/content.js`: Content script injected into the page to manage hover highlighting and user interaction.
 - `src/styles.css`: CSS for the highlight overlay and the floating action menu.
+- `src/popup.*`: Settings menu logic.
+
+## License
+Apache-2.0 License. See `LICENSE` for details.
