@@ -12,8 +12,14 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-chrome.action.onClicked.addListener((tab) => {
-  startSelection(tab.id);
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "take-screenshot") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        startSelection(tabs[0].id);
+      }
+    });
+  }
 });
 
 function startSelection(tabId) {
@@ -42,11 +48,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         
         cropImage(dataUrl, rect, dpr).then((croppedDataUrl) => {
           if (action === 'download') {
-            chrome.downloads.download({
-              url: croppedDataUrl,
-              filename: `screenshot-${Date.now()}.png`
+            chrome.storage.sync.get({ subfolder: '' }, (items) => {
+              let filename = `screenshot-${Date.now()}.png`;
+              if (items.subfolder) {
+                // Ensure no leading/trailing slashes, though popup already cleans it
+                let folder = items.subfolder.replace(/^[\/\\]+|[\/\\]+$/g, '');
+                filename = `${folder}/${filename}`;
+              }
+              chrome.downloads.download({
+                url: croppedDataUrl,
+                filename: filename
+              });
+              sendResponse({ success: true });
             });
-            sendResponse({ success: true });
           } else if (action === 'copy') {
             sendResponse({ success: true, dataUrl: croppedDataUrl });
           }
